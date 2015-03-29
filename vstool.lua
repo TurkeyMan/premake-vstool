@@ -81,7 +81,7 @@
 		api.register {
 			name = "enablewarnings",
 			scope = "config",
-			kind = "string-list",
+			kind = "list:string",
 			tokens = true,
 		}
 	end
@@ -90,7 +90,7 @@
 		api.register {
 			name = "disablewarnings",
 			scope = "config",
-			kind = "string-list",
+			kind = "list:string",
 			tokens = true,
 		}
 	end
@@ -99,7 +99,7 @@
 		api.register {
 			name = "fatalwarnings",
 			scope = "config",
-			kind = "string-list",
+			kind = "list:string",
 			tokens = true,
 		}
 	end
@@ -108,7 +108,7 @@
 		api.register {
 			name = "undefines",
 			scope = "config",
-			kind = "string-list",
+			kind = "list:string",
 			tokens = true,
 		}
 	end
@@ -221,6 +221,13 @@
 --
 -- Extend outputProperties.
 --
+
+	premake.override(vc2010.elements, "outputProperties", function(base, prj)
+		local calls = base(prj)
+		table.insertafter(calls, vc2010.projectGuid, m.ignoreWarnDuplicateFilename)
+--		table.insertafter(calls, vc2010.projectGuid, m.ignoreWarnDuplicateFilename)
+		return calls
+	end)
 
 	table.insert(vc2010.elements.outputProperties, "vstoolClangPath")
 	table.insert(vc2010.elements.outputProperties, "vstoolMingwPath")
