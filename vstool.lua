@@ -210,9 +210,9 @@
 
 	function vstool.targetArch(cfg)
 		if vstool.isvstool(cfg) then
-			if cfg.architecture == "x32" or cfg.architecture == "x86" then
+			if cfg.architecture == "m32" or cfg.architecture == "x86" then
 				_p(3,'<TargetArchitecture>x86</TargetArchitecture>')
-			elseif cfg.architecture == "x64" or cfg.architecture == "x86_64" then
+			elseif cfg.architecture == "m64" or cfg.architecture == "x86_64" then
 				_p(3,'<TargetArchitecture>x64</TargetArchitecture>')
 			elseif cfg.architecture and cfg.architecture ~= "llvm" then
 				error("Invalid 'architecture' for vs-tool: " .. cfg.architecture, 2)
