@@ -13,8 +13,12 @@
 -- Register the vs-tool module
 --
 
-	api.addAllowed("architecture", { "x86", "x86_64", "llvm" })
+	api.addAllowed("architecture", { "x86", "x86_64", "arm" })
 	api.addAllowed("vectorextensions", { "MMX", "SSE3", "SSSE3", "SSE4", "SSE4.1", "SSE4.2", "AVX", "AVX2" })
+	api.addAllowed("flags", {
+--		"OutputIR",
+		"OutputBC",
+	})
 
 	if not premake.fields["clangpath"] then
 		api.register {
@@ -34,26 +38,6 @@
 		}
 	end
 
-	if not premake.fields["languagestandard"] then
-		api.register {
-			name = "languagestandard",
-			scope = "config",
-			kind = "string",
-			allowed = {
-				"c90",
-				"gnu90",
-				"c94",
-				"c99",
-				"gnu99",
-				"c++98",
-				"gnu++98",
-				"c++11",
-				"gnu++11",
-				"c++1y",
-			},
-		}
-	end
-
 	if not premake.fields["staticlibformat"] then
 		api.register {
 			name = "staticlibformat",
@@ -66,3 +50,22 @@
 			},
 		}
 	end
+
+	-- TODO: replace this with an agreed solution in core
+	api.register {
+		name = "languagestandard",
+		scope = "config",
+		kind = "string",
+		allowed = {
+			"c90",
+			"gnu90",
+			"c94",
+			"c99",
+			"gnu99",
+			"c++98",
+			"gnu++98",
+			"c++11",
+			"gnu++11",
+			"c++14",
+		},
+	}

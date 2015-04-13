@@ -23,15 +23,19 @@
 --
 
 	function vstool.ismingw(cfg)
-		return cfg.system == premake.WINDOWS and (cfg.toolset == "gcc")
+		return cfg.toolset == "gcc"
 	end
 
 	function vstool.isclang(cfg)
-		return cfg.system == premake.WINDOWS and (cfg.toolset == "clang")
+		return cfg.toolset == "clang"
+	end
+
+	function vstool.isgccorclang(cfg)
+		return cfg.toolset == "gcc" or cfg.toolset == "clang"
 	end
 
 	function vstool.isvstool(cfg)
-		return cfg.system == premake.WINDOWS and (cfg.toolset == "gcc" or cfg.toolset == "clang")
+		return cfg.system == premake.WINDOWS and vstool.isgccorclang(cfg)
 	end
 
 
@@ -90,7 +94,7 @@
 				else
 					if vstool.isclang(cfg) and cfg.kind == "StaticLib" then
 						-- clang has some options...
-						if cfg.architecture == "llvm" then
+						if cfg.flags.OutputBC then
 							type = "StaticLibraryBc"
 						else
 							local libFormat = { [".o"]="StaticLibrary", [".a"]="StaticLibraryA", [".lib"]="StaticLibraryLib" }
@@ -143,7 +147,7 @@
 	end
 
 	premake.override(vc2010, "targetExt", function(oldfn, cfg)
-		if vstool.isvstool(cfg) then
+		if vstool.isgccorclang(cfg) then
 			local ext = cfg.buildtarget.extension
 			if ext ~= "" then
 				_x(2,'<TargetExt>%s</TargetExt>', ext)
@@ -174,6 +178,10 @@
 	end)
 
 	function vstool.debugInformation(cfg)
+		-- TODO: support these
+		--     NoDebugInfo
+		--     LimitedDebugInfo
+		--     FullDebugInfo
 		_p(3,'<GenerateDebugInformation>%s</GenerateDebugInformation>', iif(cfg.flags.Symbols, "FullDebugInfo", "NoDebugInfo"))
 	end
 
@@ -202,7 +210,7 @@
 
 	function vstool.generateLlvmBc(cfg)
 		if vstool.isclang(cfg) then
-			if cfg.architecture == "llvm" then
+			if cfg.flags.OutputBC then
 				_p(3,'<GenerateLLVMByteCode>true</GenerateLLVMByteCode>')
 			end
 		end
@@ -210,11 +218,11 @@
 
 	function vstool.targetArch(cfg)
 		if vstool.isvstool(cfg) then
-			if cfg.architecture == "m32" or cfg.architecture == "x86" then
+			if cfg.architecture == "x86" then
 				_p(3,'<TargetArchitecture>x86</TargetArchitecture>')
-			elseif cfg.architecture == "m64" or cfg.architecture == "x86_64" then
+			elseif cfg.architecture == "x86_64" then
 				_p(3,'<TargetArchitecture>x64</TargetArchitecture>')
-			elseif cfg.architecture and cfg.architecture ~= "llvm" then
+			elseif cfg.architecture then
 				error("Invalid 'architecture' for vs-tool: " .. cfg.architecture, 2)
 			end
 		end
@@ -280,7 +288,7 @@
 	end)
 
 	premake.override(vc2010, "warningLevel", function(oldfn, cfg)
-		if vstool.isvstool(cfg) then
+		if vstool.isgccorclang(cfg) then
 			local map = { Off = "DisableAllWarnings", Extra = "AllWarnings" }
 			if map[cfg.warnings] ~= nil then
 				_p(3,'<Warnings>%s</Warnings>', map[cfg.warnings])
@@ -291,8 +299,8 @@
 	end)
 
 	premake.override(vc2010, "treatWarningAsError", function(oldfn, cfg)
-		if vstool.isvstool(cfg) then
-			if cfg.flags.FatalCompileWarnings and cfg.warnings ~= "Off" then
+		if vstool.isgccorclang(cfg) then
+			if cfg.flags.FatalCompileWarnings and cfg.warnings ~= premake.OFF then
 				_p(3,'<WarningsAsErrors>true</WarningsAsErrors>')
 			end
 		else
@@ -301,7 +309,7 @@
 	end)
 
 	premake.override(vc2010, "optimization", function(oldfn, cfg, condition)
-		if vstool.isvstool(cfg) then
+		if vstool.isgccorclang(cfg) then
 			local map = { Off="O0", On="O2", Debug="O0", Full="O3", Size="Os", Speed="O3" }
 			local value = map[cfg.optimize]
 			if value or not condition then
@@ -330,6 +338,48 @@
 		return oldfn(cfg, condition)
 	end)
 
+	-- these should be silenced for vs-tool based toolsets
+	premake.override(vc2010, "debugInformationFormat", function(oldfn, cfg)
+		if not vstool.isgccorclang(cfg) then
+			oldfn(cfg)
+		end
+	end)
+	premake.override(vc2010, "functionLevelLinking", function(oldfn, cfg)
+		if not vstool.isgccorclang(cfg) then
+			oldfn(cfg)
+		end
+	end)
+	premake.override(vc2010, "intrinsicFunctions", function(oldfn, cfg)
+		if not vstool.isgccorclang(cfg) then
+			oldfn(cfg)
+		end
+	end)
+	premake.override(vc2010, "minimalRebuild", function(oldfn, cfg)
+		if not vstool.isgccorclang(cfg) then
+			oldfn(cfg)
+		end
+	end)
+	premake.override(vc2010, "omitFramePointers", function(oldfn, cfg)
+		if not vstool.isgccorclang(cfg) then
+			oldfn(cfg)
+		end
+	end)
+	premake.override(vc2010, "stringPooling", function(oldfn, cfg)
+		if not vstool.isgccorclang(cfg) then
+			oldfn(cfg)
+		end
+	end)
+	premake.override(vc2010, "runtimeLibrary", function(oldfn, cfg)
+		if not vstool.isgccorclang(cfg) then
+			oldfn(cfg)
+		end
+	end)
+	premake.override(vc2010, "bufferSecurityCheck", function(oldfn, cfg)
+		if not vstool.isgccorclang(cfg) then
+			oldfn(cfg)
+		end
+	end)
+
 
 --
 -- Extend Link.
@@ -338,6 +388,12 @@
 	premake.override(vc2010, "generateDebugInformation", function(oldfn, cfg)
 		-- Note: vs-tool specifies the debug info in the clCompile section
 		if not vstool.isvstool(cfg) then
+			oldfn(cfg)
+		end
+	end)
+
+	premake.override(vc2010, "entryPointSymbol", function(oldfn, cfg)
+		if not vstool.isgccorclang(cfg) then
 			oldfn(cfg)
 		end
 	end)
