@@ -22,7 +22,7 @@
 -- Helpers to see if we're dealing with a vs-tool action.
 --
 
-	function vstool.ismingw(cfg)
+	function vstool.isgcc(cfg)
 		return cfg.toolset == "gcc"
 	end
 
@@ -31,7 +31,7 @@
 	end
 
 	function vstool.isgccorclang(cfg)
-		return cfg.toolset == "gcc" or cfg.toolset == "clang"
+		return vstool.isgcc(cfg) or vstool.isclang(cfg)
 	end
 
 	function vstool.isvstool(cfg)
@@ -121,7 +121,7 @@
 				elements = table.join(elements, {
 					vstool.clangPath,
 				})
-			elseif vstool.ismingw(cfg) then
+			elseif vstool.isgcc(cfg) then
 				elements = table.join(elements, {
 					vstool.mingwPath,
 				})
