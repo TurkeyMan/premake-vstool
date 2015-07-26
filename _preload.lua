@@ -13,8 +13,8 @@
 -- Register the vs-tool module
 --
 
-	api.addAllowed("architecture", { "x86", "x86_64", "arm" })
-	api.addAllowed("vectorextensions", { "MMX", "SSE3", "SSSE3", "SSE4", "SSE4.1", "SSE4.2", "AVX", "AVX2" })
+	api.addAllowed("architecture", { "arm" })
+	api.addAllowed("vectorextensions", { "MMX","SSE4","SSE4.2" })
 	api.addAllowed("flags", {
 --		"OutputIR",
 		"OutputBC",
@@ -69,3 +69,12 @@
 			"c++14",
 		},
 	}
+
+
+--
+-- Decide when the full module should be loaded.
+--
+
+	return function(cfg)
+		return _ACTION:startswith("vs") and (cfg.toolset == "gcc" or cfg.toolset == "clang")
+	end

@@ -7,7 +7,8 @@
 
 	p.modules.vstool = {}
 
-	local vstool = p.modules.vstool
+	local m = p.modules.vstool
+	m._VERSION = "0.0.1"
 
 	local sln2005 = p.vstudio.sln2005
 	local vc2010 = p.vstudio.vc2010
@@ -22,20 +23,20 @@
 -- Helpers to see if we're dealing with a vs-tool action.
 --
 
-	function vstool.isgcc(cfg)
+	function m.isgcc(cfg)
 		return cfg.toolset == "gcc"
 	end
 
-	function vstool.isclang(cfg)
+	function m.isclang(cfg)
 		return cfg.toolset == "clang"
 	end
 
-	function vstool.isgccorclang(cfg)
-		return vstool.isgcc(cfg) or vstool.isclang(cfg)
+	function m.isgccorclang(cfg)
+		return m.isgcc(cfg) or m.isclang(cfg)
 	end
 
-	function vstool.isvstool(cfg)
-		return cfg.system == premake.WINDOWS and vstool.isgccorclang(cfg)
+	function m.isvstool(cfg)
+		return _ACTION:startswith("vs") and m.isgccorclang(cfg)
 	end
 
 
@@ -43,18 +44,13 @@
 -- Add vs-tool tools to vstudio actions.
 --
 
-	if vstudio.vs200x_architectures ~= nil then
-		vstudio.vs200x_architectures.x86 = "x86"
-		vstudio.vs200x_architectures.x86_64 = "x64"
-	end
-
 	if vstudio.vs2010_architectures ~= nil then
 		vstudio.vs2010_architectures.clang = "Clang"
 		vstudio.vs2010_architectures.mingw = "MinGW"
 	end
 
 	premake.override(vstudio, "archFromConfig", function(oldfn, cfg, win32)
-		if cfg.system == premake.WINDOWS then
+		if _ACTION:startswith("vs") then
 			if cfg.toolset == "gcc" then
 				return "MinGW"
 			elseif cfg.toolset == "clang" then
@@ -70,7 +66,7 @@
 --
 
 	premake.override(vc2010, "platformToolset", function(orig, cfg)
-		if vstool.isvstool(cfg) then
+		if m.isvstool(cfg) then
 			-- is there a reason to write this? default is fine.
 --			local map = { gcc="mingw", clang="clang" }
 --			_p(2,'<PlatformToolset>%s</PlatformToolset>', map[cfg.toolset])
@@ -80,7 +76,7 @@
 	end)
 
 	premake.override(vc2010, "configurationType", function(oldfn, cfg)
-		if vstool.isvstool(cfg) then
+		if m.isvstool(cfg) then
 			if cfg.kind then
 				local types = {
 					SharedLib = "DynamicLibrary",
@@ -92,7 +88,7 @@
 				if not type then
 					error("Invalid 'kind' for vs-tool: " .. cfg.kind, 2)
 				else
-					if vstool.isclang(cfg) and cfg.kind == "StaticLib" then
+					if m.isclang(cfg) and cfg.kind == "StaticLib" then
 						-- clang has some options...
 						if cfg.flags.OutputBC then
 							type = "StaticLibraryBc"
@@ -117,20 +113,20 @@
 	premake.override(vc2010.elements, "outputProperties", function(oldfn, cfg)
 		local elements = oldfn(cfg)
 		if cfg.kind ~= p.UTILITY then
-			if vstool.isclang(cfg) then
+			if m.isclang(cfg) then
 				elements = table.join(elements, {
-					vstool.clangPath,
+					m.clangPath,
 				})
-			elseif vstool.isgcc(cfg) then
+			elseif m.isgcc(cfg) then
 				elements = table.join(elements, {
-					vstool.mingwPath,
+					m.mingwPath,
 				})
 			end
 		end
 		return elements
 	end)
 
-	function vstool.clangPath(cfg)
+	function m.clangPath(cfg)
 		if cfg.clangpath ~= nil then
 --			local dirs = project.getrelative(cfg.project, includedirs)
 --			dirs = path.translate(table.concat(fatalwarnings, ";"))
@@ -138,7 +134,7 @@
 		end
 	end
 
-	function vstool.mingwPath(cfg)
+	function m.mingwPath(cfg)
 		if cfg.mingwpath ~= nil then
 --			local dirs = project.getrelative(cfg.project, includedirs)
 --			dirs = path.translate(table.concat(fatalwarnings, ";"))
@@ -147,7 +143,7 @@
 	end
 
 	premake.override(vc2010, "targetExt", function(oldfn, cfg)
-		if vstool.isgccorclang(cfg) then
+		if m.isgccorclang(cfg) then
 			local ext = cfg.buildtarget.extension
 			if ext ~= "" then
 				_x(2,'<TargetExt>%s</TargetExt>', ext)
@@ -164,20 +160,20 @@
 
 	premake.override(vc2010.elements, "clCompile", function(oldfn, cfg)
 		local elements = oldfn(cfg)
-		if vstool.isvstool(cfg) then
+		if m.isvstool(cfg) then
 			elements = table.join(elements, {
-				vstool.debugInformation,
-				vstool.enableWarnings,
-				vstool.languageStandard,
-				vstool.generateLlvmBc,
-				vstool.targetArch,
-				vstool.instructionSet,
+				m.debugInformation,
+				m.enableWarnings,
+				m.languageStandard,
+				m.generateLlvmBc,
+				m.targetArch,
+				m.instructionSet,
 			})
 		end
 		return elements
 	end)
 
-	function vstool.debugInformation(cfg)
+	function m.debugInformation(cfg)
 		-- TODO: support these
 		--     NoDebugInfo
 		--     LimitedDebugInfo
@@ -185,13 +181,13 @@
 		_p(3,'<GenerateDebugInformation>%s</GenerateDebugInformation>', iif(cfg.flags.Symbols, "FullDebugInfo", "NoDebugInfo"))
 	end
 
-	function vstool.enableWarnings(cfg)
+	function m.enableWarnings(cfg)
 		if #cfg.enablewarnings > 0 then
 			_x(3,'<EnableWarnings>%s</EnableWarnings>', table.concat(cfg.enablewarnings, ";"))
 		end
 	end
 
-	function vstool.languageStandard(cfg)
+	function m.languageStandard(cfg)
 		local map = {
 			c90         = "LanguageStandardC89",
 			gnu90       = "LanguageStandardGnu89",
@@ -208,16 +204,16 @@
 		end
 	end
 
-	function vstool.generateLlvmBc(cfg)
-		if vstool.isclang(cfg) then
+	function m.generateLlvmBc(cfg)
+		if m.isclang(cfg) then
 			if cfg.flags.OutputBC then
 				_p(3,'<GenerateLLVMByteCode>true</GenerateLLVMByteCode>')
 			end
 		end
 	end
 
-	function vstool.targetArch(cfg)
-		if vstool.isvstool(cfg) then
+	function m.targetArch(cfg)
+		if m.isvstool(cfg) then
 			if cfg.architecture == "x86" then
 				_p(3,'<TargetArchitecture>x86</TargetArchitecture>')
 			elseif cfg.architecture == "x86_64" then
@@ -228,8 +224,8 @@
 		end
 	end
 
-	function vstool.instructionSet(cfg)
-		if vstool.isvstool(cfg) then
+	function m.instructionSet(cfg)
+		if m.isvstool(cfg) then
 			local map = {
 				MMX="MMX",
 				SSE="SSE",
@@ -249,7 +245,7 @@
 	end
 
 	premake.override(vc2010, "disableSpecificWarnings", function(oldfn, cfg)
-		if vstool.isvstool(cfg) then
+		if m.isvstool(cfg) then
 			if #cfg.disablewarnings > 0 then
 				local warnings = table.concat(cfg.disablewarnings, ";")
 				warnings = premake.esc(warnings) .. ";%%(DisableWarnings)"
@@ -261,7 +257,7 @@
 	end)
 
 	premake.override(vc2010, "treatSpecificWarningsAsErrors", function(oldfn, cfg)
-		if vstool.isvstool(cfg) then
+		if m.isvstool(cfg) then
 			if #cfg.fatalwarnings > 0 then
 				local fatal = table.concat(cfg.fatalwarnings, ";")
 				fatal = premake.esc(fatal) .. ";%%(SpecificWarningsAsErrors)"
@@ -273,7 +269,7 @@
 	end)
 
 	premake.override(vc2010, "undefinePreprocessorDefinitions", function(oldfn, cfg, undefines, escapeQuotes, condition)
-		if vstool.isvstool(cfg) then
+		if m.isvstool(cfg) then
 			if #undefines > 0 then
 				undefines = table.concat(undefines, ";")
 				if escapeQuotes then
@@ -288,7 +284,7 @@
 	end)
 
 	premake.override(vc2010, "warningLevel", function(oldfn, cfg)
-		if vstool.isgccorclang(cfg) then
+		if m.isgccorclang(cfg) then
 			local map = { Off = "DisableAllWarnings", Extra = "AllWarnings" }
 			if map[cfg.warnings] ~= nil then
 				_p(3,'<Warnings>%s</Warnings>', map[cfg.warnings])
@@ -299,7 +295,7 @@
 	end)
 
 	premake.override(vc2010, "treatWarningAsError", function(oldfn, cfg)
-		if vstool.isgccorclang(cfg) then
+		if m.isgccorclang(cfg) then
 			if cfg.flags.FatalCompileWarnings and cfg.warnings ~= premake.OFF then
 				_p(3,'<WarningsAsErrors>true</WarningsAsErrors>')
 			end
@@ -309,12 +305,12 @@
 	end)
 
 	premake.override(vc2010, "optimization", function(oldfn, cfg, condition)
-		if vstool.isgccorclang(cfg) then
+		if m.isgccorclang(cfg) then
 			local map = { Off="O0", On="O2", Debug="O0", Full="O3", Size="Os", Speed="O3" }
 			local value = map[cfg.optimize]
 			if value or not condition then
 				value = value or "O0"
-				if vstool.isclang(cfg) and cfg.flags.LinkTimeOptimization and value ~= "O0" then
+				if m.isclang(cfg) and cfg.flags.LinkTimeOptimization and value ~= "O0" then
 					value = "O4"
 				end
 				vc2010.element('OptimizationLevel', condition, value)
@@ -326,56 +322,56 @@
 
 	premake.override(vc2010, "exceptionHandling", function(oldfn, cfg)
 		-- ignored for vs-tool
-		if not vstool.isvstool(cfg) then
+		if not m.isvstool(cfg) then
 			oldfn(cfg)
 		end
 	end)
 
 	premake.override(vc2010, "additionalCompileOptions", function(oldfn, cfg, condition)
-		if vstool.isvstool(cfg) then
-			vstool.additionalOptions(cfg, condition)
+		if m.isvstool(cfg) then
+			m.additionalOptions(cfg, condition)
 		end
 		return oldfn(cfg, condition)
 	end)
 
 	-- these should be silenced for vs-tool based toolsets
 	premake.override(vc2010, "debugInformationFormat", function(oldfn, cfg)
-		if not vstool.isgccorclang(cfg) then
+		if not m.isgccorclang(cfg) then
 			oldfn(cfg)
 		end
 	end)
 	premake.override(vc2010, "functionLevelLinking", function(oldfn, cfg)
-		if not vstool.isgccorclang(cfg) then
+		if not m.isgccorclang(cfg) then
 			oldfn(cfg)
 		end
 	end)
 	premake.override(vc2010, "intrinsicFunctions", function(oldfn, cfg)
-		if not vstool.isgccorclang(cfg) then
+		if not m.isgccorclang(cfg) then
 			oldfn(cfg)
 		end
 	end)
 	premake.override(vc2010, "minimalRebuild", function(oldfn, cfg)
-		if not vstool.isgccorclang(cfg) then
+		if not m.isgccorclang(cfg) then
 			oldfn(cfg)
 		end
 	end)
 	premake.override(vc2010, "omitFramePointers", function(oldfn, cfg)
-		if not vstool.isgccorclang(cfg) then
+		if not m.isgccorclang(cfg) then
 			oldfn(cfg)
 		end
 	end)
 	premake.override(vc2010, "stringPooling", function(oldfn, cfg)
-		if not vstool.isgccorclang(cfg) then
+		if not m.isgccorclang(cfg) then
 			oldfn(cfg)
 		end
 	end)
 	premake.override(vc2010, "runtimeLibrary", function(oldfn, cfg)
-		if not vstool.isgccorclang(cfg) then
+		if not m.isgccorclang(cfg) then
 			oldfn(cfg)
 		end
 	end)
 	premake.override(vc2010, "bufferSecurityCheck", function(oldfn, cfg)
-		if not vstool.isgccorclang(cfg) then
+		if not m.isgccorclang(cfg) then
 			oldfn(cfg)
 		end
 	end)
@@ -387,13 +383,13 @@
 
 	premake.override(vc2010, "generateDebugInformation", function(oldfn, cfg)
 		-- Note: vs-tool specifies the debug info in the clCompile section
-		if not vstool.isvstool(cfg) then
+		if not m.isvstool(cfg) then
 			oldfn(cfg)
 		end
 	end)
 
 	premake.override(vc2010, "entryPointSymbol", function(oldfn, cfg)
-		if not vstool.isgccorclang(cfg) then
+		if not m.isgccorclang(cfg) then
 			oldfn(cfg)
 		end
 	end)
@@ -402,7 +398,7 @@
 --
 -- Add options unsupported by vs-tool vs-tool UI to <AdvancedOptions>.
 --
-	function vstool.additionalOptions(cfg, condition)
+	function m.additionalOptions(cfg, condition)
 
 		local function alreadyHas(t, key)
 			for _, k in ipairs(t) do
@@ -417,4 +413,4 @@
 
 	end
 
-	return vstool
+	return m
