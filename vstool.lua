@@ -17,8 +17,6 @@
 	local config = p.config
 
 
-	include("_preload.lua")
-
 --
 -- Helpers to see if we're dealing with a vs-tool action.
 --
